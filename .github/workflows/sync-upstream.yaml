@@ -1,0 +1,47 @@
+name: 'Upstream Sync'
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run at 2 AM UTC every day
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      sync_test_mode:
+        description: 'Fork Sync Test Mode'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write  # Need write permission to sync changes
+
+jobs:
+  sync_latest_from_upstream:
+    runs-on: ubuntu-latest
+    name: Sync latest commits from upstream repo
+
+    steps:
+      # Step 1: Checkout target repository
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      # Step 2: Sync upstream changes
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
+        with:
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream_sync_branch: main
+          upstream_sync_repo: Mintimate/oh-my-rime
+          test_mode: ${{ inputs.sync_test_mode }}
+
+      # Step 3: Output sync results
+      - name: New commits found
+        if: steps.sync.outputs.has_new_commits == 'true'
+        run: echo "New commits were found to sync."
+
+      - name: No new commits
+        if: steps.sync.outputs.has_new_commits == 'false'
+        run: echo "There were no new commits to sync."
